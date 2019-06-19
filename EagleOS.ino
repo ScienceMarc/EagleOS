@@ -2,6 +2,7 @@
 #include <system_configuration.h>
 #include <unwind-cxx.h>
 #include <vector>
+#include <time.h>
 
 #include <Adafruit_ST7735.h>
 
@@ -19,7 +20,10 @@ static const PROGMEM uint16_t file[] = {
 static const PROGMEM uint16_t text_editor[] = {
     0x139f, 0x235f, 0x237e, 0x237f, 0x1b7f, 0x1b5e, 0x239e, 0x139f, 0x233f, 0xf7f2, 0xfff3, 0xe7f4, 0xff93, 0xf7f3, 0x1bbf, 0x1b5f, 0x13be, 0xce72, 0xce50, 0xb66b, 0xc64d, 0xd62f, 0xb64c, 0x237f, 0x1b9d, 0xffb2, 0xf7f1, 0xfff1, 0xfff2, 0xf7d3, 0xffb3, 0x1b7f, 0x235e, 0x801, 0x800, 0x822, 0xce4d, 0xb64e, 0xb6ef, 0x135d, 0x1bbf, 0xeff2, 0x802, 0xefd2, 0xf7d3, 0xffd6, 0xfff2, 0x237f, 0x1b7f, 0xce2e, 0x1, 0xc64c, 0xd64e, 0xc68c, 0xc62e, 0x237f, 0x1b7e, 0x1b7f, 0x1bbf, 0x231f, 0x1b9f, 0x139f, 0x235f, 0x137f};
 static const PROGMEM uint16_t text_file[] = {
-    0x7411,0x7411,0x7411,0x7411,0x7411,0xad75,0x7411,0xffff,0xffff,0xffff,0xffff,0x7411,0x7411,0x7411,0x7411,0x7411,0x7411,0x7411,0x7411,0xffff,0xffff,0xffff,0xffff,0x7411,0x7411,0x7411,0x7411,0x7411,0x7411,0x7411,0x7411,0xffff,0xffff,0xffff,0xffff,0x7411,0x7411,0x7411,0x7411,0x7411,0x7411,0x7411,0x7411,0xffff,0xffff,0xffff,0xffff,0x7411,0x7411,0x7411,0x7411,0x7411,0x7411,0x7411};
+    0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0xad75, 0x7411, 0xffff, 0xffff, 0xffff, 0xffff, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0xffff, 0xffff, 0xffff, 0xffff, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0xffff, 0xffff, 0xffff, 0xffff, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0xffff, 0xffff, 0xffff, 0xffff, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411};
+static const PROGMEM uint16_t unknown_file[] = {
+    0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0xad75, 0x7411, 0xffff, 0xffff, 0xffff, 0xffff, 0x7411, 0x7411, 0xffff, 0x707f, 0x707f, 0x707f, 0x7411, 0x7411, 0xffff, 0xffff, 0xffff, 0x707f, 0x7411, 0x7411, 0xffff, 0x707f, 0x707f, 0x707f, 0x7411, 0x7411, 0xffff, 0x707f, 0xffff, 0xffff, 0x7411, 0x7411, 0xffff, 0xffff, 0xffff, 0xffff, 0x7411, 0x7411, 0xffff, 0x707f, 0xffff, 0xffff, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411};
+time_t unixtimestamp = 0;
 #pragma GCC optimize("-O3")
 
 //Input
@@ -35,6 +39,10 @@ bool currentLEFTstate = false;
 bool lastAstate = false;
 bool currentAstate = false;
 
+#define B 4
+bool lastBstate = false;
+bool currentBstate = false;
+
 #define TFT_CS 10
 #define TFT_RST 8
 #define TFT_DC 9
@@ -42,7 +50,7 @@ Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
 struct Folder {
     String name;
-    std::vector<String> contents{"[1.TXT]Hello World!", "[2.TXT]Hello World 2!"};  //! G O D I S D E A D
+    std::vector<String> contents;  //! G O D I S D E A D
     Folder() {
         name = "!!!!";
     }
@@ -51,6 +59,9 @@ struct Folder {
     };
     String getFileName(int index) {
         return contents[index].substring(contents[index].indexOf("[") + 1, contents[index].indexOf("]"));
+    }
+    String getFileContents(int index) {
+        return contents[index].substring(contents[index].indexOf("]") + 1);
     }
 };
 std::vector<Folder> folders{Folder("%SYS"), Folder("%DAT")};
@@ -98,10 +109,12 @@ void drawFileSelection(int num) {
 void showDesktop() {
     drawBackground(0);
     drawTaskbar();
+    drawClock(unixtimestamp + millis()/1000);
 }
 
 void drawFolderView(int insideFolder, int currentlySelected) {
     tft.fillScreen(0xAD55);
+    
     for (int i = 0; i < folders[insideFolder].contents.size(); i++) {
         ////Serial.println(folders[insideFolder].getFileName(i).substring(folders[insideFolder].getFileName(i).indexOf(".") + 1, folders[insideFolder].getFileName(i).indexOf("]")));
         if (folders[insideFolder].getFileName(i).substring(folders[insideFolder].getFileName(i).indexOf(".") + 1, folders[insideFolder].getFileName(i).indexOf("]")) == "TXT") {  //! EXISTENCE IS PAIN
@@ -109,9 +122,25 @@ void drawFolderView(int insideFolder, int currentlySelected) {
             tft.setCursor(11 + (i % 4 * 18 * 2), 40 + 32 * floor(i / 4));
             tft.print(folders[insideFolder].getFileName(i).substring(folders[insideFolder].getFileName(i).indexOf("[") + 1, folders[insideFolder].getFileName(i).indexOf(".")));
         }
+        else {
+            drawBMPCustom(16 + (i % 4 * 18 * 2), 20 + 34 * floor(i / 4), 6, 2, unknown_file, sizeof(unknown_file), 0);
+            tft.setCursor(11 + (i % 4 * 18 * 2), 40 + 32 * floor(i / 4));
+            tft.print(folders[insideFolder].getFileName(i).substring(folders[insideFolder].getFileName(i).indexOf("[") + 1, folders[insideFolder].getFileName(i).indexOf(".")));
+        }
         drawFileSelection(currentlySelected);
     }
+    drawClock(unixtimestamp + millis()/1000);
 }
+
+void drawClock(time_t currentTimestamp) {
+    struct tm *tmp = gmtime(&currentTimestamp);
+    tft.fillRect(60,1,5*6,9,0);
+    tft.setTextColor(0xFFFF);
+    tft.setCursor(60,2);
+    String currentHour = String(tmp->tm_hour + 2) + ":" + String("0").substring(0,1-(tmp->tm_min > 10)) + String(tmp->tm_min);
+    tft.println(currentHour);
+}
+
 
 void setup() {
     // put your setup code here, to run once:
@@ -126,21 +155,62 @@ void setup() {
     tft.setTextColor(0xFFFF);
     tft.setTextWrap(true);
     tft.fillRect(0, 0, 160, 5, 0);
-    for (int i = 0; i < 3; i++) {
-        folders.push_back(Folder("File"));
-    }
-
-    drawBackground(0);
-    drawTaskbar();
-    drawFileSelection(0);
+    folders[0].contents.push_back("[READ.TXT]Congratulations! \n\nYou managed to get the OS to work! \n\nTry creating a text file, or load one from an SD \ncard or something.");
 
     pinMode(RIGHT, INPUT_PULLUP);
     pinMode(LEFT, INPUT_PULLUP);
     pinMode(A, INPUT_PULLUP);
+    pinMode(B, INPUT_PULLUP);
+
+    char inputChar = 0;
+    String time;
+    
+    tft.setCursor(2,3);
+    tft.println("Loading data from PC...");
+    tft.setCursor(2,11);
+    tft.println("Press A to skip");
+    while (digitalRead(A)) {
+        if (millis() >= 5000) {
+            tft.setCursor(2,19);
+            tft.println("FAILED!");
+            delay(100);
+            break;
+        }
+        if (Serial.available() > 0) {
+            inputChar = Serial.read();
+            
+            if (inputChar != 's') {
+                time += inputChar;
+                inputChar = 0;
+            }
+            else {
+                for (int i = 0; i < time.length(); i++) {
+                    char c = time.charAt(i);
+                    Serial.println(c);
+                    if (c < '0' || c > '9') {break;}
+                    unixtimestamp *= 10;
+                    unixtimestamp += (c - '0');
+                }
+                
+                struct tm *tmp = gmtime(&unixtimestamp);
+                Serial.println(String(tmp->tm_hour + 2) + ":" + String(tmp->tm_min));
+                tft.println(time);
+                tft.println(String(tmp->tm_hour + 2) + ":" + String(tmp->tm_min));
+                tft.println(String(tmp->tm_mday + 1) + "/" + String(tmp->tm_mon + 1) + "/" + String(tmp->tm_year + 1870));
+                delay(1000);
+                break;
+            }
+            
+        }
+    } //Wait for A to be pressed
+    drawBackground(0);
+    drawTaskbar();
+    drawFileSelection(0);
 }
 
 int currentlySelected = 0;
 int insideFolder = -1;
+bool viewingFile = false;
 
 uint32_t execTime = 0;
 void loop() {
@@ -149,41 +219,68 @@ void loop() {
     currentRIGHTstate = digitalRead(RIGHT);
     currentLEFTstate = digitalRead(LEFT);
     currentAstate = digitalRead(A);
+    currentBstate = digitalRead(B);
 
-    if (insideFolder >= 0) { //If this is true then we must be inside a folder
-        if (currentRIGHTstate != lastRIGHTstate && !currentRIGHTstate && currentlySelected + 1 < folders[insideFolder].contents.size()) { //Move selection to the right
+    if (insideFolder >= 0) {  //If this is true then we must be inside a folder
+        //TODO: Add support for nested folders.
+        if (currentRIGHTstate != lastRIGHTstate && !currentRIGHTstate && currentlySelected + 1 < folders[insideFolder].contents.size() && !viewingFile) {  //Move selection to the right
             currentlySelected++;
-            drawFolderView(insideFolder,currentlySelected);
+            drawFolderView(insideFolder, currentlySelected);
         }
-        if (currentLEFTstate != lastLEFTstate && !currentLEFTstate && currentlySelected > 0) { //Move selection to the left
+        if (currentLEFTstate != lastLEFTstate && !currentLEFTstate && currentlySelected > 0 && !viewingFile) {  //Move selection to the left
             currentlySelected--;
-            drawFolderView(insideFolder,currentlySelected);
+            drawFolderView(insideFolder, currentlySelected);
         }
-    }
-    else { //We must be on the desktop
-        if (currentRIGHTstate != lastRIGHTstate && !currentRIGHTstate && currentlySelected + 1 < folders.size()) { //Move selection to the right
+        if (currentAstate != lastAstate && !currentAstate) {  //Open file
+        //TODO: add support for image files.
+            viewingFile = true;
+            tft.fillScreen(ST7735_WHITE);
+            tft.setCursor(2, 10);
+            tft.setTextColor(0);
+            tft.print(folders[insideFolder].getFileContents(currentlySelected));
+        }
+        if (currentBstate != lastBstate && !currentBstate) {
+            if (viewingFile) {
+                tft.setTextColor(ST7735_WHITE);
+                viewingFile = false;
+                drawFolderView(insideFolder, currentlySelected);
+            } else {
+                currentlySelected = insideFolder;
+                insideFolder = -1;
+                showDesktop();
+                drawFileSelection(currentlySelected);
+            }
+        }
+    } else {                                                                                                        //We must be on the desktop
+        if (currentRIGHTstate != lastRIGHTstate && !currentRIGHTstate && currentlySelected + 1 < folders.size()) {  //Move selection to the right
             currentlySelected++;
             showDesktop();
             drawFileSelection(currentlySelected);
         }
-        if (currentLEFTstate != lastLEFTstate && !currentLEFTstate && currentlySelected > 0) { //Move selection to the left
+        if (currentLEFTstate != lastLEFTstate && !currentLEFTstate && currentlySelected > 0) {  //Move selection to the left
             currentlySelected--;
             showDesktop();
             drawFileSelection(currentlySelected);
         }
-        
     }
-    if (currentAstate != lastAstate && !currentAstate && insideFolder == -1) { //Enter folder/open file
+    if (currentAstate != lastAstate && !currentAstate && insideFolder == -1) {  //Enter folder/open file
         insideFolder = currentlySelected;
         currentlySelected = 0;
-        drawFolderView(insideFolder,currentlySelected);
+        drawFolderView(insideFolder, currentlySelected);
     }
 
     lastRIGHTstate = currentRIGHTstate;
     lastLEFTstate = currentLEFTstate;
     lastAstate = currentAstate;
+    lastBstate = currentBstate;
+
+    time_t currentTimestamp = unixtimestamp + millis()/1000;
+    if (currentTimestamp%60 == 0 || millis() < 10000) {
+        drawClock(currentTimestamp);
+    }
+    
     ////Serial.println(folders[0].getFileName(0));
-    double fps = pow(((millis() - execTime) * 0.001), -1);
-    fpsCounter(fps);
+    ////double fps = pow(((millis() - execTime) * 0.001), -1);
+    ////fpsCounter(fps);
     ////delay((millis() - execTime) * 2);  //* Wait for twice as long as it took to draw the frame.
 }

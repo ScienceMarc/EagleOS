@@ -76,10 +76,6 @@ void drawBMPCustom(uint16_t x, uint16_t y, uint16_t w, uint16_t sf, const uint16
 }
 void drawBackground(uint16_t stp) {
     drawBMPCustom(0, 2, 40, 4, background, sizeof(background), stp);  //Background
-
-    /*drawBMPCustom(5, 20, 13, 2, file, sizeof(file), 0); //File icon
-    tft.setCursor(11, 40);
-    tft.print("File 1");*/
     for (int i = 0; i < folders.size(); i++) {
         drawBMPCustom(10 + (i % 4 * 18 * 2), 20 + 34 * floor(i / 4), 13, 2, file, sizeof(file), 0);  //Draw file icon
         tft.setCursor(11 + (i % 4 * 18 * 2), 40 + 32 * floor(i / 4));
@@ -134,10 +130,16 @@ void drawFolderView(int insideFolder, int currentlySelected) {
 
 void drawClock(time_t currentTimestamp) {
     struct tm *tmp = gmtime(&currentTimestamp);
-    tft.fillRect(60,1,5*6,9,0);
+    tft.fillRect(56,1,5*6 + 20,9,0);
     tft.setTextColor(0xFFFF);
-    tft.setCursor(60,2);
-    String currentHour = String(tmp->tm_hour + 2) + ":" + String("0").substring(0,1-(tmp->tm_min > 10)) + String(tmp->tm_min);
+    tft.setCursor(64,2);
+    String currentHour = String((tmp->tm_hour + 2)%12) + ":" + String("0").substring(0,1-(tmp->tm_min > 10)) + String(tmp->tm_min);
+    if (tmp->tm_hour > 12) {
+        currentHour += "PM";
+    }
+    else {
+        currentHour += "AM";
+    }
     tft.println(currentHour);
 }
 

@@ -4,6 +4,6 @@ const port = new SerialPort("COM3", {
 });
 
 setTimeout(() => {
-    port.write((new Date()).getTime().toString().substr(0,(new Date()).getTime().toString().length-3) + "s")
-    console.log((new Date()).getTime().toString().substr(0,(new Date()).getTime().toString().length-3))
+    port.write((new Date()).getTime().toString().substr(0,(new Date()).getTime().toString().length-3) + "s");
+    console.log((new Date()).getTime().toString().substr(0,(new Date()).getTime().toString().length-3));
 },3000)

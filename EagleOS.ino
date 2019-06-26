@@ -1,8 +1,8 @@
 #include "PDQ_ST7735_config.h"
-#include <PDQ_FastPin.h>
-#include <PDQ_ST7735.h>
 
+#include <PDQ_FastPin.h>
 #include <PDQ_GFX.h>
+#include <PDQ_ST7735.h>
 #include <gfxfont.h>
 
 #include <ArduinoSTL.h>
@@ -47,7 +47,7 @@ bool currentSTARTstate = false;
 
 PDQ_ST7735 tft;
 
-int timezoneOffset = 2; //TODO: Make this changable
+int timezoneOffset = 2;  //TODO: Make this changable
 
 struct Folder {
     String name;
@@ -154,32 +154,31 @@ void drawClock(time_t currentTimestamp) {
 }
 time_t lastTime = 0;
 void drawClockApp() {
-    time_t currentTime = unixtimestamp + millis()/1000;
-    
+    time_t currentTime = unixtimestamp + millis() / 1000;
+
     struct tm *tmp = gmtime(&currentTime);
     if (lastTime == currentTime) {
         return;
     }
     tft.fillRect(25, 10, 110, 96, 0);
-    tft.drawCircle(60,45,30,0xFFFF); //TODO: Make this prettier
-    
+    tft.drawCircle(60, 45, 30, 0xFFFF);  //TODO: Make this prettier
 
-    double s = ((tmp->tm_sec - 0) * (TWO_PI - 0) / (60 - 0) + 0) - HALF_PI;                          //
-    double m = ((tmp->tm_min - 0) * (TWO_PI - 0) / (60 - 0) + 0) - HALF_PI;                          // This section calculates the rotation of the hands of the clock
-    double h = (((tmp->tm_hour + timezoneOffset) % 12 - 0) * (TWO_PI - 0) / (12 - 0) + 0) - HALF_PI; //
+    double s = ((tmp->tm_sec - 0) * (TWO_PI - 0) / (60 - 0) + 0) - HALF_PI;                           //
+    double m = ((tmp->tm_min - 0) * (TWO_PI - 0) / (60 - 0) + 0) - HALF_PI;                           // This section calculates the rotation of the hands of the clock
+    double h = (((tmp->tm_hour + timezoneOffset) % 12 - 0) * (TWO_PI - 0) / (12 - 0) + 0) - HALF_PI;  //
 
     float secondHandLength = 27;
     float minuteHandLength = 20;
     float hourHandLength = 15;
 
-    tft.drawLine(60,45,60 + cos(s) * secondHandLength,45 + sin(s) * secondHandLength,0xF800);
-    tft.drawLine(60,45,60 + cos(m) * minuteHandLength,45 + sin(m) * minuteHandLength,0xFFFF);
-    tft.drawLine(60,45,60 + cos(h) * hourHandLength,45 + sin(h) * hourHandLength,0xFFFF);
-    
-    std::vector<String> months{"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
-    tft.setCursor(25,80);
+    tft.drawLine(60, 45, 60 + cos(s) * secondHandLength, 45 + sin(s) * secondHandLength, 0xF800);
+    tft.drawLine(60, 45, 60 + cos(m) * minuteHandLength, 45 + sin(m) * minuteHandLength, 0xFFFF);
+    tft.drawLine(60, 45, 60 + cos(h) * hourHandLength, 45 + sin(h) * hourHandLength, 0xFFFF);
+
+    std::vector<String> months{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    tft.setCursor(25, 80);
     tft.println(String(tmp->tm_mday + 1) + " of " + months.at(tmp->tm_mon) + " " + String(tmp->tm_year + 1870));
-    tft.setCursor(25,88);
+    tft.setCursor(25, 88);
     tft.println(String(tmp->tm_hour + timezoneOffset) + ":" + String("0").substring(0, 1 - (tmp->tm_min > 9)) + String(tmp->tm_min) + ":" + String("0").substring(0, 1 - (tmp->tm_sec > 9)) + String(tmp->tm_sec));
     lastTime = currentTime;
 }
@@ -357,7 +356,7 @@ void loop() {
         }
     }
 
-    switch(currentlyOpenApp) {
+    switch (currentlyOpenApp) {
         case 0:
             drawClockApp();
             break;

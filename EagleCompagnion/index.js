@@ -1,5 +1,5 @@
 const SerialPort = require('serialport');
-const port = new SerialPort("COM3", {
+const port = new SerialPort("COM11", {
     baudRate: 230400
 });
 

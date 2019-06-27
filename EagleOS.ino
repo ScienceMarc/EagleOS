@@ -1,9 +1,7 @@
-#include "PDQ_ST7735_config.h"
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7735.h>
 
-#include <PDQ_FastPin.h>
-#include <PDQ_GFX.h>
-#include <PDQ_ST7735.h>
-#include <gfxfont.h>
+#include <SPI.h>
 
 #include <ArduinoSTL.h>
 #include <system_configuration.h>
@@ -21,33 +19,37 @@ static const PROGMEM uint16_t unknown_file[] = {
     0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0xad75, 0x7411, 0xffff, 0xffff, 0xffff, 0xffff, 0x7411, 0x7411, 0xffff, 0x707f, 0x707f, 0x707f, 0x7411, 0x7411, 0xffff, 0xffff, 0xffff, 0x707f, 0x7411, 0x7411, 0xffff, 0x707f, 0x707f, 0x707f, 0x7411, 0x7411, 0xffff, 0x707f, 0xffff, 0xffff, 0x7411, 0x7411, 0xffff, 0xffff, 0xffff, 0xffff, 0x7411, 0x7411, 0xffff, 0x707f, 0xffff, 0xffff, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411};
 static const PROGMEM uint16_t clock_icon[] = {
     0xa815, 0xa815, 0x0, 0x0, 0x0, 0x0, 0xa815, 0xa815, 0xa815, 0x0, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0xa815, 0x0, 0xffff, 0xffff, 0x0, 0xffff, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0x0, 0xffff, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0xa815, 0x0, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0xa815, 0xa815, 0xa815, 0x0, 0x0, 0x0, 0x0, 0xa815, 0xa815};
-time_t unixtimestamp = 0;
-#pragma GCC optimize("-O3")
 
-//Input
-#define RIGHT 7
+#define TFT_DC PA0
+#define TFT_CS PA1
+#define TFT_RST PA2
+
+Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
+#define BOARD_LED PC13
+
+//Inputs
+#define RIGHT PB5
 bool lastRIGHTstate = false;
 bool currentRIGHTstate = false;
 
-#define LEFT 6
+#define LEFT PB4
 bool lastLEFTstate = false;
 bool currentLEFTstate = false;
 
-#define A 5
+#define A PA8
 bool lastAstate = false;
 bool currentAstate = false;
 
-#define B 4
+#define B PA15
 bool lastBstate = false;
 bool currentBstate = false;
 
-#define START 3
+#define START PB15
 bool lastSTARTstate = false;
 bool currentSTARTstate = false;
 
-PDQ_ST7735 tft;
-
 int timezoneOffset = 2;  //TODO: Make this changable
+time_t unixtimestamp = 0;
 
 struct Folder {
     String name;
@@ -184,18 +186,18 @@ void drawClockApp() {
 }
 
 void setup() {
-    // put your setup code here, to run once:
-    Serial.begin(230400);
-#if defined(ST7735_RST_PIN)  // reset like Adafruit does
-    FastPin<ST7735_RST_PIN>::setOutput();
-    FastPin<ST7735_RST_PIN>::hi();
-    FastPin<ST7735_RST_PIN>::lo();
-    delay(1);
-    FastPin<ST7735_RST_PIN>::hi();
+#if defined BOARD_LED
+    pinMode(BOARD_LED, OUTPUT);
+    digitalWrite(BOARD_LED, HIGH);
 #endif
-    delay(500);
-    //tft.initR(INITR_BLACKTAB);  // Init ST7735S chip, black tab.
-    tft.begin();
+    Serial.begin(230400);
+    tft.initR(INITR_BLACKTAB);
+
+    pinMode(RIGHT, INPUT_PULLUP);
+    pinMode(LEFT, INPUT_PULLUP);
+    pinMode(A, INPUT_PULLUP);
+    pinMode(B, INPUT_PULLUP);
+    pinMode(START, INPUT_PULLUP);
 
     Serial.println(F("Initialized"));
     tft.fillScreen(0);
@@ -205,13 +207,6 @@ void setup() {
     tft.setTextWrap(true);
     tft.fillRect(0, 0, 160, 5, 0);
     folders[0].contents.push_back("[READ.TXT]Congratulations! \n\nYou managed to get the OS to work! \n\nTry creating a text file, or load one from an SD \ncard or something.");
-
-    pinMode(RIGHT, INPUT_PULLUP);
-    pinMode(LEFT, INPUT_PULLUP);
-    pinMode(A, INPUT_PULLUP);
-    pinMode(B, INPUT_PULLUP);
-    pinMode(START, INPUT_PULLUP);
-
     char inputChar = 0;
     String time;
 
@@ -253,6 +248,7 @@ void setup() {
             }
         }
     }  //Wait for A to be pressed
+
     drawBackground(0);
     drawTaskbar(-1);
     drawFileSelection(0);

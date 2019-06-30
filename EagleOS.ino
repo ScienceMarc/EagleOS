@@ -19,7 +19,9 @@ static const PROGMEM uint16_t unknown_file[] = {
     0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0xad75, 0x7411, 0xffff, 0xffff, 0xffff, 0xffff, 0x7411, 0x7411, 0xffff, 0x707f, 0x707f, 0x707f, 0x7411, 0x7411, 0xffff, 0xffff, 0xffff, 0x707f, 0x7411, 0x7411, 0xffff, 0x707f, 0x707f, 0x707f, 0x7411, 0x7411, 0xffff, 0x707f, 0xffff, 0xffff, 0x7411, 0x7411, 0xffff, 0xffff, 0xffff, 0xffff, 0x7411, 0x7411, 0xffff, 0x707f, 0xffff, 0xffff, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411, 0x7411};
 static const PROGMEM uint16_t clock_icon[] = {
     0xa815, 0xa815, 0x0, 0x0, 0x0, 0x0, 0xa815, 0xa815, 0xa815, 0x0, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0xa815, 0x0, 0xffff, 0xffff, 0x0, 0xffff, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0x0, 0xffff, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0xa815, 0x0, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0xa815, 0xa815, 0xa815, 0x0, 0x0, 0x0, 0x0, 0xa815, 0xa815};
-
+static const PROGMEM uint16_t serialPhoto_icon[] = {
+    0xa815,0xa815,0xa815,0xa815,0xa815,0xa815,0xa815,0xa815,0x0,0xe7e1,0x0,0xe7e1,0x0,0xe7e1,0x0,0xe7e1,0xe7e1,0xc7f,0xc7f,0xc7f,0xc7f,0xc7f,0xc7f,0x0,0x0,0xc7f,0xc7f,0xc7f,0xc7f,0x3ba5,0x3ba5,0xe7e1,0xe7e1,0xc7f,0x3ba5,0x3ba5,0x3ba5,0x3ba5,0x3ba5,0x0,0x0,0x3ba5,0x3ba5,0x3ba5,0x3ba5,0x3ba5,0x3ba5,0xe7e1,0xe7e1,0x0,0xe7e1,0x0,0xe7e1,0x0,0xe7e1,0x0,0xa815,0xa815,0xa815,0xa815,0xa815,0xa815,0xa815,0xa815
+};
 #define TFT_DC PA0
 #define TFT_CS PA1
 #define TFT_RST PA2
@@ -98,8 +100,9 @@ void drawBackground(uint16_t stp) {
 }
 void drawTaskbar(int index) {
     tft.fillRect(0, 110, 160, 18, 0x1B7F);  //Task Bar
-    tft.fillRect(0 + index * 19, 110, 19, 18, 0x8F5F);
+    tft.fillRect(1 + index * 18, 110, 18, 18, 0x8F5F);
     drawBMPCustomTransparency(2, 111, 8, 2, clock_icon, sizeof(clock_icon), 0);
+    drawBMPCustomTransparency(20,111,8,2,serialPhoto_icon,sizeof(serialPhoto_icon),0);
 }
 void fpsCounter(double fps) {
     tft.fillRect(0, 0, 38, 10, 0);
@@ -179,10 +182,47 @@ void drawClockApp() {
 
     std::vector<String> months{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
     tft.setCursor(25, 80);
-    tft.println(String(tmp->tm_mday + 1) + " of " + months.at(tmp->tm_mon) + " " + String(tmp->tm_year + 1870));
+    tft.println(String(tmp->tm_mday) + " of " + months.at(tmp->tm_mon) + " " + String(tmp->tm_year + 1900));
     tft.setCursor(25, 88);
     tft.println(String(tmp->tm_hour + timezoneOffset) + ":" + String("0").substring(0, 1 - (tmp->tm_min > 9)) + String(tmp->tm_min) + ":" + String("0").substring(0, 1 - (tmp->tm_sec > 9)) + String(tmp->tm_sec));
     lastTime = currentTime;
+}
+
+char inputChar = 0;
+String inputString = "";
+uint16_t pix = 0;
+bool displayingImage = false;
+void serialPhoto () {
+    int width = 128;
+    if (!displayingImage) {
+        tft.fillRect(16,16,128,82,0); 
+        Serial.println("serialPhoto");
+    }
+    if (Serial.available() > 0) {
+        displayingImage = true;
+        inputChar = Serial.read();
+        inputString += inputChar;
+        inputChar = 0;
+    }
+    if (inputString.length() >= 6) {
+        uint16_t color = strtoul(inputString.c_str(),NULL,16);
+        //Serial.println(color,16);
+        inputString = "";
+
+        tft.drawPixel(16 + (pix % width), 16 + floor(pix / width), color);
+        //tft.fillRect(16 + (pix % width)*4, 16 + floor(pix / width)*4, 4, 4, color);
+        ////tft.fillRect(16,16,128,72,color);
+        pix++;
+    }
+    if (inputString[0] == 's') {
+        pix = 0;
+    }
+    currentAstate = digitalRead(A);
+    if (currentAstate != lastAstate && !currentAstate) {
+        displayingImage = false;
+        pix = 0;
+    }
+    lastAstate = currentAstate;
 }
 
 void setup() {
@@ -190,7 +230,7 @@ void setup() {
     pinMode(BOARD_LED, OUTPUT);
     digitalWrite(BOARD_LED, HIGH);
 #endif
-    Serial.begin(230400);
+    Serial.begin(115200);
     tft.initR(INITR_BLACKTAB);
 
     pinMode(RIGHT, INPUT_PULLUP);
@@ -215,7 +255,7 @@ void setup() {
     tft.setCursor(2, 11);
     tft.println("Press A to skip");
     while (digitalRead(A)) {
-        if (millis() >= 5000) {
+        if (millis() >= 8000) {
             tft.setCursor(2, 19);
             tft.println("FAILED!");
             delay(100);
@@ -242,8 +282,8 @@ void setup() {
                 Serial.println(String(tmp->tm_hour + timezoneOffset) + ":" + String(tmp->tm_min));
                 tft.println(time);
                 tft.println(String(tmp->tm_hour + timezoneOffset) + ":" + String(tmp->tm_min));
-                tft.println(String(tmp->tm_mday + 1) + "/" + String(tmp->tm_mon + 1) + "/" + String(tmp->tm_year + 1870));
-                delay(1000);
+                tft.println(String(tmp->tm_mday) + "/" + String(tmp->tm_mon + 1) + "/" + String(tmp->tm_year + 1900));
+                delay(2000);
                 break;
             }
         }
@@ -327,7 +367,7 @@ void loop() {
         drawFolderView(insideFolder, currentlySelected);
     }
     if (taskbarFocus) {
-        int numberOfApps = 1;  //TODO: Make this dynamic rather than a number I have to update
+        int numberOfApps = 2;  //TODO: Make this dynamic rather than a number I have to update
         if (currentRIGHTstate != lastRIGHTstate && !currentRIGHTstate && currentlySelected + 1 < numberOfApps) {
             currentlySelected++;
             drawTaskbar(currentlySelected);
@@ -336,8 +376,8 @@ void loop() {
             currentlySelected--;
             drawTaskbar(currentlySelected);
         }
-        if (currentAstate != lastAstate && !currentAstate && currentlySelected == 0) {
-            currentlyOpenApp = 0;
+        if (currentAstate != lastAstate && !currentAstate) {
+            currentlyOpenApp = currentlySelected;
         }
         if (currentBstate != lastBstate && !currentBstate) {
             currentlyOpenApp = -1;
@@ -355,6 +395,9 @@ void loop() {
     switch (currentlyOpenApp) {
         case 0:
             drawClockApp();
+            break;
+        case 1:
+            serialPhoto();
             break;
         default:
             break;

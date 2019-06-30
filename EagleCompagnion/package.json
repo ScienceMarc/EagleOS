@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "nanotimer": "^0.3.15",
     "serialport": "^7.1.5"
   }
 }

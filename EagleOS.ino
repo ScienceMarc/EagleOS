@@ -204,6 +204,7 @@ void serialPhoto () {
         inputString += inputChar;
         inputChar = 0;
     }
+    
     if (inputString.length() >= 6) {
         uint16_t color = strtoul(inputString.c_str(),NULL,16);
         //Serial.println(color,16);
@@ -216,11 +217,19 @@ void serialPhoto () {
     }
     if (inputString[0] == 's') {
         pix = 0;
+        inputString = "";
+    }
+    if (inputString[0] != '0' && inputString.length() != 0) {
+        Serial.println(inputString);
+        inputString = "";
+        tft.setCursor(16,88);
+        tft.print("ERROR");
     }
     currentAstate = digitalRead(A);
     if (currentAstate != lastAstate && !currentAstate) {
         displayingImage = false;
         pix = 0;
+        inputString = "";
     }
     lastAstate = currentAstate;
 }
@@ -230,7 +239,7 @@ void setup() {
     pinMode(BOARD_LED, OUTPUT);
     digitalWrite(BOARD_LED, HIGH);
 #endif
-    Serial.begin(115200);
+    Serial.begin(230400);
     tft.initR(INITR_BLACKTAB);
 
     pinMode(RIGHT, INPUT_PULLUP);
@@ -284,6 +293,7 @@ void setup() {
                 tft.println(String(tmp->tm_hour + timezoneOffset) + ":" + String(tmp->tm_min));
                 tft.println(String(tmp->tm_mday) + "/" + String(tmp->tm_mon + 1) + "/" + String(tmp->tm_year + 1900));
                 delay(2000);
+                inputChar = 0;
                 break;
             }
         }

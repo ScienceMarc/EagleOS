@@ -55,7 +55,7 @@ time_t unixtimestamp = 0;
 
 struct Folder {
     String name;
-    std::vector<String> contents;  //! G O D I S D E A D
+    std::vector<String> contents;
     Folder() {
         name = "!!!!";
     }
@@ -130,7 +130,7 @@ void drawFolderView(int insideFolder, int currentlySelected) {
 
     for (int i = 0; i < folders[insideFolder].contents.size(); i++) {
         ////Serial.println(folders[insideFolder].getFileName(i).substring(folders[insideFolder].getFileName(i).indexOf(".") + 1, folders[insideFolder].getFileName(i).indexOf("]")));
-        if (folders[insideFolder].getFileName(i).substring(folders[insideFolder].getFileName(i).indexOf(".") + 1, folders[insideFolder].getFileName(i).indexOf("]")) == "TXT") {  //! EXISTENCE IS PAIN
+        if (folders[insideFolder].getFileName(i).substring(folders[insideFolder].getFileName(i).indexOf(".") + 1, folders[insideFolder].getFileName(i).indexOf("]")) == "TXT") {
             drawBMPCustom(16 + (i % 4 * 18 * 2), 20 + 34 * floor(i / 4), 6, 2, text_file, sizeof(text_file), 0);                                                                  //Draw file icon
             tft.setCursor(11 + (i % 4 * 18 * 2), 40 + 32 * floor(i / 4));
             tft.print(folders[insideFolder].getFileName(i).substring(folders[insideFolder].getFileName(i).indexOf("[") + 1, folders[insideFolder].getFileName(i).indexOf(".")));
@@ -402,7 +402,7 @@ void loop() {
         }
     }
 
-    switch (currentlyOpenApp) {
+    switch (currentlyOpenApp) { //Every loop, runs program
         case 0:
             drawClockApp();
             break;

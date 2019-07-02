@@ -1,6 +1,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7735.h>
 
+#include <SD.h>
 #include <SPI.h>
 
 #include <ArduinoSTL.h>
@@ -20,8 +21,7 @@ static const PROGMEM uint16_t unknown_file[] = {
 static const PROGMEM uint16_t clock_icon[] = {
     0xa815, 0xa815, 0x0, 0x0, 0x0, 0x0, 0xa815, 0xa815, 0xa815, 0x0, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0xa815, 0x0, 0xffff, 0xffff, 0x0, 0xffff, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0x0, 0xffff, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0x0, 0x0, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0xa815, 0x0, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0xa815, 0xa815, 0xa815, 0x0, 0x0, 0x0, 0x0, 0xa815, 0xa815};
 static const PROGMEM uint16_t serialPhoto_icon[] = {
-    0xa815,0xa815,0xa815,0xa815,0xa815,0xa815,0xa815,0xa815,0x0,0xe7e1,0x0,0xe7e1,0x0,0xe7e1,0x0,0xe7e1,0xe7e1,0xc7f,0xc7f,0xc7f,0xc7f,0xc7f,0xc7f,0x0,0x0,0xc7f,0xc7f,0xc7f,0xc7f,0x3ba5,0x3ba5,0xe7e1,0xe7e1,0xc7f,0x3ba5,0x3ba5,0x3ba5,0x3ba5,0x3ba5,0x0,0x0,0x3ba5,0x3ba5,0x3ba5,0x3ba5,0x3ba5,0x3ba5,0xe7e1,0xe7e1,0x0,0xe7e1,0x0,0xe7e1,0x0,0xe7e1,0x0,0xa815,0xa815,0xa815,0xa815,0xa815,0xa815,0xa815,0xa815
-};
+    0xa815, 0xa815, 0xa815, 0xa815, 0xa815, 0xa815, 0xa815, 0xa815, 0x0, 0xe7e1, 0x0, 0xe7e1, 0x0, 0xe7e1, 0x0, 0xe7e1, 0xe7e1, 0xc7f, 0xc7f, 0xc7f, 0xc7f, 0xc7f, 0xc7f, 0x0, 0x0, 0xc7f, 0xc7f, 0xc7f, 0xc7f, 0x3ba5, 0x3ba5, 0xe7e1, 0xe7e1, 0xc7f, 0x3ba5, 0x3ba5, 0x3ba5, 0x3ba5, 0x3ba5, 0x0, 0x0, 0x3ba5, 0x3ba5, 0x3ba5, 0x3ba5, 0x3ba5, 0x3ba5, 0xe7e1, 0xe7e1, 0x0, 0xe7e1, 0x0, 0xe7e1, 0x0, 0xe7e1, 0x0, 0xa815, 0xa815, 0xa815, 0xa815, 0xa815, 0xa815, 0xa815, 0xa815};
 #define TFT_DC PA0
 #define TFT_CS PA1
 #define TFT_RST PA2
@@ -50,6 +50,9 @@ bool currentBstate = false;
 bool lastSTARTstate = false;
 bool currentSTARTstate = false;
 
+#define SD_CS PB0
+File root;
+
 int timezoneOffset = 2;  //TODO: Make this changable
 time_t unixtimestamp = 0;
 
@@ -66,7 +69,27 @@ struct Folder {
         return contents[index].substring(contents[index].indexOf("[") + 1, contents[index].indexOf("]"));
     }
     String getFileContents(int index) {
-        return contents[index].substring(contents[index].indexOf("]") + 1);
+        if (contents[index].substring(contents[index].indexOf("]") + 1) != "{SD}"){
+            return contents[index].substring(contents[index].indexOf("]") + 1);
+        }
+        else { //This is a file on the SD card
+            Serial.println(contents[index].substring(1,contents[index].indexOf("]")));
+            File reader = SD.open(contents[index].substring(1,contents[index].indexOf("]")));
+            Serial.println("Reading: " + contents[index].substring(1,contents[index].indexOf("]")));
+            if (reader) {
+                String fileDat = "";
+                while (reader.available()) {
+                    char character = reader.read();
+                    fileDat += character;
+                    Serial.println(character);
+                }
+                reader.close();
+                return fileDat;
+            }
+            else {
+                return "[Error reading file]";
+            }
+        }
     }
 };
 std::vector<Folder> folders{Folder("%SYS"), Folder("%DAT")};
@@ -102,7 +125,7 @@ void drawTaskbar(int index) {
     tft.fillRect(0, 110, 160, 18, 0x1B7F);  //Task Bar
     tft.fillRect(1 + index * 18, 110, 18, 18, 0x8F5F);
     drawBMPCustomTransparency(2, 111, 8, 2, clock_icon, sizeof(clock_icon), 0);
-    drawBMPCustomTransparency(20,111,8,2,serialPhoto_icon,sizeof(serialPhoto_icon),0);
+    drawBMPCustomTransparency(20, 111, 8, 2, serialPhoto_icon, sizeof(serialPhoto_icon), 0);
 }
 void fpsCounter(double fps) {
     tft.fillRect(0, 0, 38, 10, 0);
@@ -131,7 +154,7 @@ void drawFolderView(int insideFolder, int currentlySelected) {
     for (int i = 0; i < folders[insideFolder].contents.size(); i++) {
         ////Serial.println(folders[insideFolder].getFileName(i).substring(folders[insideFolder].getFileName(i).indexOf(".") + 1, folders[insideFolder].getFileName(i).indexOf("]")));
         if (folders[insideFolder].getFileName(i).substring(folders[insideFolder].getFileName(i).indexOf(".") + 1, folders[insideFolder].getFileName(i).indexOf("]")) == "TXT") {
-            drawBMPCustom(16 + (i % 4 * 18 * 2), 20 + 34 * floor(i / 4), 6, 2, text_file, sizeof(text_file), 0);                                                                  //Draw file icon
+            drawBMPCustom(16 + (i % 4 * 18 * 2), 20 + 34 * floor(i / 4), 6, 2, text_file, sizeof(text_file), 0);  //Draw file icon
             tft.setCursor(11 + (i % 4 * 18 * 2), 40 + 32 * floor(i / 4));
             tft.print(folders[insideFolder].getFileName(i).substring(folders[insideFolder].getFileName(i).indexOf("[") + 1, folders[insideFolder].getFileName(i).indexOf(".")));
         } else {
@@ -192,10 +215,10 @@ char inputChar = 0;
 String inputString = "";
 uint16_t pix = 0;
 bool displayingImage = false;
-void serialPhoto () {
+void serialPhoto() {
     int width = 128;
     if (!displayingImage) {
-        tft.fillRect(16,16,128,82,0); 
+        tft.fillRect(16, 16, 128, 82, 0);
         Serial.println("serialPhoto");
     }
     if (Serial.available() > 0) {
@@ -204,9 +227,9 @@ void serialPhoto () {
         inputString += inputChar;
         inputChar = 0;
     }
-    
+
     if (inputString.length() >= 6) {
-        uint16_t color = strtoul(inputString.c_str(),NULL,16);
+        uint16_t color = strtoul(inputString.c_str(), NULL, 16);
         //Serial.println(color,16);
         inputString = "";
 
@@ -222,7 +245,7 @@ void serialPhoto () {
     if (inputString[0] != '0' && inputString.length() != 0) {
         Serial.println(inputString);
         inputString = "";
-        tft.setCursor(16,88);
+        tft.setCursor(16, 88);
         tft.print("ERROR");
     }
     currentAstate = digitalRead(A);
@@ -264,7 +287,7 @@ void setup() {
     tft.setCursor(2, 11);
     tft.println("Press A to skip");
     while (digitalRead(A)) {
-        if (millis() >= 8000) {
+        if (millis() >= 2000) {
             tft.setCursor(2, 19);
             tft.println("FAILED!");
             delay(100);
@@ -292,12 +315,34 @@ void setup() {
                 tft.println(time);
                 tft.println(String(tmp->tm_hour + timezoneOffset) + ":" + String(tmp->tm_min));
                 tft.println(String(tmp->tm_mday) + "/" + String(tmp->tm_mon + 1) + "/" + String(tmp->tm_year + 1900));
-                delay(2000);
                 inputChar = 0;
-                break;
             }
         }
     }  //Wait for A to be pressed
+
+    tft.println("Initializing SD card");
+    if (!SD.begin(SD_CS)) {
+        Serial.println("Failed to initialze SD card! Is it wired correctly? Is an SD card inserted?");
+    } else {
+        Serial.println("Successful init of SD card");
+        folders.push_back(Folder("%SD"));
+        root = SD.open("/");
+        while (true) {
+            File entry = root.openNextFile();
+            
+            if (!entry) {
+                break;  //No more files
+            }
+            Serial.println(entry.name());
+            String fileDat = "";
+            fileDat += "[";
+            fileDat += entry.name();
+            fileDat += "]{SD}";
+            
+            folders[folders.size()-1].contents.push_back(fileDat);
+            
+        }
+    }
 
     drawBackground(0);
     drawTaskbar(-1);
@@ -402,7 +447,7 @@ void loop() {
         }
     }
 
-    switch (currentlyOpenApp) { //Every loop, runs program
+    switch (currentlyOpenApp) {  //Every loop, runs program
         case 0:
             drawClockApp();
             break;

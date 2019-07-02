@@ -73,15 +73,21 @@ struct Folder {
             return contents[index].substring(contents[index].indexOf("]") + 1);
         }
         else { //This is a file on the SD card
-            Serial.println(contents[index].substring(1,contents[index].indexOf("]")));
             File reader = SD.open(contents[index].substring(1,contents[index].indexOf("]")));
             Serial.println("Reading: " + contents[index].substring(1,contents[index].indexOf("]")));
-            if (reader) {
+            if (reader/* && contents[index].substring(1,contents[index].indexOf("]")) != "SYSTEM~1"*/) {
                 String fileDat = "";
+                uint16_t chars = 0;
                 while (reader.available()) {
                     char character = reader.read();
+                    chars++;
                     fileDat += character;
-                    Serial.println(character);
+                    if (chars > 5000) {
+                        Serial.println("File too big");
+                        fileDat += "\n\n[FILE TOO BIG]";
+                        reader.close();
+                        return fileDat;
+                    }
                 }
                 reader.close();
                 return fileDat;
@@ -354,6 +360,8 @@ int insideFolder = -1;
 bool viewingFile = false;
 bool taskbarFocus = false;
 int currentlyOpenApp = -1;
+int currentScroll = 0;
+String fileContents = "";
 
 uint32_t execTime = 0;
 void loop() {
@@ -379,14 +387,17 @@ void loop() {
                                                               //TODO: add support for image files.
             viewingFile = true;
             tft.fillScreen(ST7735_WHITE);
-            tft.setCursor(2, 10);
+            tft.setCursor(2, 8);
             tft.setTextColor(0);
+            fileContents = folders[insideFolder].getFileContents(currentlySelected);
             tft.print(folders[insideFolder].getFileContents(currentlySelected));
         }
         if (currentBstate != lastBstate && !currentBstate) {
             if (viewingFile) {
                 tft.setTextColor(ST7735_WHITE);
                 viewingFile = false;
+                currentScroll = 0;
+                fileContents = "";
                 drawFolderView(insideFolder, currentlySelected);
             } else {
                 currentlySelected = insideFolder;
@@ -394,6 +405,20 @@ void loop() {
                 showDesktop();
                 drawFileSelection(currentlySelected);
             }
+        }
+        if (currentRIGHTstate != lastRIGHTstate && !currentRIGHTstate && viewingFile) {
+            currentScroll -= 8;
+            tft.fillScreen(ST7735_WHITE);
+            tft.setCursor(2, 8 + currentScroll);
+            tft.setTextColor(0);
+            tft.print(fileContents);
+        }
+        if (currentLEFTstate != lastLEFTstate && !currentLEFTstate && viewingFile) {
+            currentScroll += 8;
+            tft.fillScreen(ST7735_WHITE);
+            tft.setCursor(2, 8 + currentScroll);
+            tft.setTextColor(0);
+            tft.print(fileContents);
         }
     } else {                                                                                                                         //We must be on the desktop
         if (currentRIGHTstate != lastRIGHTstate && !currentRIGHTstate && currentlySelected + 1 < folders.size() && !taskbarFocus) {  //Move selection to the right
